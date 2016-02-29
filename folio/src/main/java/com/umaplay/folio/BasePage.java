@@ -1,5 +1,6 @@
 package com.umaplay.folio;
 
+import android.content.Context;
 import android.support.annotation.CallSuper;
 import android.util.Log;
 import android.view.View;
@@ -16,7 +17,6 @@ public abstract class BasePage implements Page {
 
     private PageManager mNestedPageManager;
     private PageManager mStack;
-    private boolean mIsAnimated;
     private boolean mIsMounted;
     private boolean mHasFocus;
     private boolean mIsVisible;
@@ -47,7 +47,7 @@ public abstract class BasePage implements Page {
     @Override
     @CallSuper
     public void onPageMounted(View view) {
-        mIsMounted = false;
+        mIsMounted = true;
         Log.d(TAG, this.getClass().getName() + "::onPageMounted");
     }
 
@@ -125,16 +125,6 @@ public abstract class BasePage implements Page {
     }
 
     @Override
-    public void setAnimated(boolean b) {
-        mIsAnimated = b;
-    }
-
-    @Override
-    public boolean isAnimated() {
-        return mIsAnimated;
-    }
-
-    @Override
     public void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory) {
         mOutAnimator = outPageAnimatorFactory;
     }
@@ -142,5 +132,12 @@ public abstract class BasePage implements Page {
     @Override
     public PageAnimatorFactory getOutAnimator() {
         return mOutAnimator;
+    }
+
+    @Override
+    public Context getContext() {
+        if(!isMounted()) throw new IllegalStateException("Page has not been mounted");
+
+        return getView().getContext();
     }
 }

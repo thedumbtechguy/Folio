@@ -1,6 +1,7 @@
 package com.umaplay.folio;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -26,7 +27,6 @@ public interface Page extends Serializable {
     boolean hasFocus();
 
     void setView(View view);
-
     View getView();
 
     void setPageManager(PageManager stack);
@@ -35,10 +35,8 @@ public interface Page extends Serializable {
     PageManager peekNestedPageManager();
     PageManager getNestedPageManager(ViewGroup container);
 
-    void setAnimated(boolean b);
-    boolean isAnimated();
-
-
     void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory);
     PageAnimatorFactory getOutAnimator();
+
+    Context getContext();
 }

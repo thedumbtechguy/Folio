@@ -1,14 +1,17 @@
 package com.umaplay.foliodemo.page;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.umaplay.folio.BasePage;
-import com.umaplay.folio.animator.FadeOutAnimator;
+import com.umaplay.folio.BasePageFactory;
+import com.umaplay.folio.Page;
 import com.umaplay.foliodemo.R;
+import com.umaplay.foliodemo.animation.CircularHide;
 import com.umaplay.foliodemo.animation.CircularReveal;
 
 /**
@@ -36,8 +39,15 @@ public class GreenPage extends BasePage {
             @Override
             public void onClick(View v) {
                 Log.d("testing", "GreenView pushing BlueView");
-                getPageManager().goTo(new BluePage(), new CircularReveal(), new FadeOutAnimator());
+                getPageManager().goTo(new BluePage.BluePageFactory(), new CircularReveal(), new CircularHide());
             }
         });
+    }
+
+    public static class GreenPageFactory extends BasePageFactory {
+        @Override
+        public Page getPage() {
+            return new GreenPage();
+        }
     }
 }

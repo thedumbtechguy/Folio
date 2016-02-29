@@ -19,6 +19,6 @@ public class CircularHide implements PageAnimatorFactory {
 
         // create the animation (the final radius is zero)
         return ViewAnimationUtils.createCircularReveal(view, cx, cy, initialRadius, 0)
-                .setDuration(400);
+                .setDuration(300);
     }
 }

@@ -17,7 +17,7 @@ public class MainActivity extends PagedActivity {
         mPageManager = new PageManager((ViewGroup) findViewById(R.id.container), this, savedInstanceState);
 
         if (savedInstanceState == null) {
-            mPageManager.goTo(new RedPage());
+            mPageManager.goTo(new RedPage.RedPageFactory());
         }
     }
 }

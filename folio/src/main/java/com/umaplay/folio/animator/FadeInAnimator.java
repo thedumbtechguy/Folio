@@ -13,7 +13,7 @@ public class FadeInAnimator implements PageAnimatorFactory {
     @Override
     public Animator createAnimator(View view) {
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "alpha", 0f, 1f);
-        anim.setDuration(500);
+        anim.setDuration(300);
 
         return anim;
     }

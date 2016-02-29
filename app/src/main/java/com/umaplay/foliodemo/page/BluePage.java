@@ -1,12 +1,18 @@
 package com.umaplay.foliodemo.page;
 
 import android.content.Context;
+import android.content.Intent;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.umaplay.folio.BasePage;
+import com.umaplay.folio.BasePageFactory;
+import com.umaplay.folio.Page;
+import com.umaplay.folio.PageFactory;
+import com.umaplay.foliodemo.BlankActivity;
 import com.umaplay.foliodemo.R;
 
 /**
@@ -19,15 +25,22 @@ public class BluePage extends BasePage {
     }
 
     @Override
-    public void onPageMounted(View view) {
+    public void onPageMounted(final View view) {
         super.onPageMounted(view);
 
         view.findViewById(R.id.blue_button_back).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("testing", "BlueView popping itself");
-                getPageManager().goBack();
+                Log.d("testing", "BlueView launching new activity");
+                getContext().startActivity(new Intent(getContext(), BlankActivity.class));
             }
         });
+    }
+
+    public static class BluePageFactory extends BasePageFactory {
+        @Override
+        public Page getPage() {
+            return new BluePage();
+        }
     }
 }

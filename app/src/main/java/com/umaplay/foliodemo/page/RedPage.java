@@ -1,12 +1,16 @@
 package com.umaplay.foliodemo.page;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.umaplay.folio.BasePage;
+import com.umaplay.folio.BasePageFactory;
+import com.umaplay.folio.Page;
+import com.umaplay.folio.PageFactory;
 import com.umaplay.foliodemo.R;
 import com.umaplay.foliodemo.animation.CircularHide;
 import com.umaplay.foliodemo.animation.CircularReveal;
@@ -36,8 +40,16 @@ public class RedPage extends BasePage {
             @Override
             public void onClick(View v) {
                 Log.d("testing", "RedPage pushing GreenView");
-                getPageManager().goTo(new GreenPage(), new CircularReveal(), new CircularHide());
+                getPageManager().goTo(new GreenPage.GreenPageFactory(), new CircularReveal(), new CircularHide());
             }
         });
+    }
+
+    public static class RedPageFactory extends BasePageFactory {
+        @NonNull
+        @Override
+        public Page getPage() {
+            return new RedPage();
+        }
     }
 }
