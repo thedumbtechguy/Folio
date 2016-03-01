@@ -1,8 +1,7 @@
 package com.umaplay.folio.animator;
 
 import android.animation.Animator;
-import android.animation.ObjectAnimator;
-import android.animation.TimeInterpolator;
+import android.animation.ValueAnimator;
 import android.view.View;
 
 /**
@@ -11,7 +10,7 @@ import android.view.View;
 public class NoAnimation implements PageAnimatorFactory {
     @Override
     public Animator createAnimator(View view) {
-        ObjectAnimator anim = ObjectAnimator.ofFloat(view, "alpha", 1f, 1f);
+        Animator anim = ValueAnimator.ofInt(0, 1);
         anim.setDuration(1);
 
         return anim;

@@ -12,7 +12,7 @@ public class FadeOutAnimator implements PageAnimatorFactory {
     @Override
     public Animator createAnimator(View view) {
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "alpha", 1f, 0f);
-        anim.setDuration(300);
+        anim.setDuration(400);
 
         return anim;
     }
