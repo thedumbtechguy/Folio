@@ -14,10 +14,10 @@ public class MainActivity extends PagedActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mPageManager = new PageManager((ViewGroup) findViewById(R.id.container), this, savedInstanceState);
+        setPageManager(new PageManager((ViewGroup) findViewById(R.id.container), this, savedInstanceState));
 
         if (savedInstanceState == null) {
-            mPageManager.goTo(new RedPage.RedPageFactory());
+            getPageManager().goTo(new RedPage.RedPageFactory());
         }
     }
 }
