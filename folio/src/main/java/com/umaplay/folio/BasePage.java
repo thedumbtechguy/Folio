@@ -2,7 +2,9 @@ package com.umaplay.folio;
 
 import android.content.Context;
 import android.support.annotation.CallSuper;
+import android.support.annotation.LayoutRes;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -139,5 +141,9 @@ public abstract class BasePage implements Page {
         if(!isMounted()) throw new IllegalStateException("Page has not been mounted");
 
         return getView().getContext();
+    }
+
+    protected View inflate(@LayoutRes int layout, Context context, ViewGroup container) {
+        return LayoutInflater.from(context).inflate(layout, container, false);
     }
 }

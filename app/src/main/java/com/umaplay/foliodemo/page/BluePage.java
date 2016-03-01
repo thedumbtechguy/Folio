@@ -21,7 +21,7 @@ import com.umaplay.foliodemo.R;
 public class BluePage extends BasePage {
     @Override
     public View onCreateView(Context context, ViewGroup container) {
-        return LayoutInflater.from(context).inflate(R.layout.view_blue, container, false);
+        return inflate(R.layout.view_blue, context, container);
     }
 
     @Override
