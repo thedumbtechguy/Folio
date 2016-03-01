@@ -29,27 +29,26 @@ public final class PageManager {
 
     private final Stack<Page> mPageStack = new Stack<>();
     private final Stack<PageFactory> mFactoryStack = new Stack<>();
-    private final ViewGroup container;
+    private final ViewGroup mPageContainer;
     private final PageStackDelegate delegate;
     private final List<StackChangedListener> listeners = new ArrayList<>();
     private boolean mHasStarted;
     private boolean mHasResumed;
     private boolean mDeferNotification;
-    private boolean mIsDestroying;
 
     /**
      * Constructor for PageManager instances
      *
-     * @param container Any ViewGroup container for navigation Views. Typically a FrameLayout
+     * @param container Any ViewGroup mPageContainer for navigation Views. Typically a FrameLayout
      * @param delegate  A PageStackDelegate responsible for "finishing" the navigation
      * @return A new PageManager instance
      */
     public PageManager(ViewGroup container, PageStackDelegate delegate, Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
-        checkNotNull(container, "container == null");
+        checkNotNull(container, "mPageContainer == null");
         checkNotNull(delegate, "delegate == null");
 
-        this.container = container;
+        this.mPageContainer = container;
         this.delegate = delegate;
 
         if(savedInstanceState != null) restoreFromSavedInstanceState(savedInstanceState);
@@ -59,14 +58,14 @@ public final class PageManager {
      * Constructor for child PageManager instances
      * Used internally to give Pages the ability to have nested pages
      *
-     * @param container Any ViewGroup container for navigation Views. Typically a FrameLayout
+     * @param container Any ViewGroup mPageContainer for navigation Views. Typically a FrameLayout
      * @return A new PageManager instance
      */
     private PageManager(ViewGroup container) {
         Log.d(TAG, "onCreateNested");
         checkNotNull(container, "container == null");
 
-        this.container = container;
+        this.mPageContainer = container;
         this.delegate = null;
     }
 
@@ -144,9 +143,9 @@ public final class PageManager {
         mFactoryStack.push(factory);
         mPageStack.push(page);
 
-        View view = page.onCreateView(container.getContext(), container);
+        View view = page.onCreateView(mPageContainer.getContext(), mPageContainer);
         page.setView(view);
-        container.addView(view);
+        mPageContainer.addView(view);
 
         setBelowLostFocus();
         page.onPageMounted(view);
@@ -174,16 +173,108 @@ public final class PageManager {
         return page;
     }
 
+
+
+
+    /**
+     * Replaces the current page with a Page created by the provided PageFactory, onto the navigation stack
+     *
+     * @param factory responsible for the creation of the new Page in the navigation stack
+     * @return the provided Page
+     */
+    public Page replace(PageFactory factory) {
+        return replace(factory, new NoAnimation(), new NoAnimation());
+    }
+
+    /**
+     * Replaces the current page with a Page created by the provided PageFactory, onto the navigation stack and animates
+     * it using the Animator created by the provided PageAnimatorFactory
+     *
+     * @param factory responsible for the creation of the new Page in the navigation stack
+     * @param inPageAnimatorFactory responsible for the creation of an Animator to animate the new View
+     *                        onto the navigation stack
+     * @return the provided Page
+     */
+    public Page replace(final PageFactory factory, final PageAnimatorFactory inPageAnimatorFactory) {
+        return replace(factory, inPageAnimatorFactory, new NoAnimation());
+    }
+
+    /**
+     * Replaces the current page with  a Page created by the provided PageFactory, onto the navigation stack and animates
+     * it using the Animator created by the provided PageAnimatorFactory
+     *
+     * @param factory responsible for the creation of the new Page in the navigation stack
+     * @param inPageAnimatorFactory responsible for the creation of an Animator to animate the next View
+     *                        onto the navigation stack
+     * @param outPageAnimatorFactory responsible for the creation of an Animator to animate the current View
+     *                        off the navigation stack
+     * @return the provided Page
+     */
+    public Page replace(final PageFactory factory, final PageAnimatorFactory inPageAnimatorFactory, final PageAnimatorFactory outPageAnimatorFactory) {
+        checkNotNull(factory, "factory == null");
+        checkNotNull(inPageAnimatorFactory, "inPageAnimatorFactory == null");
+        checkNotNull(outPageAnimatorFactory, "outPageAnimatorFactory == null");
+
+        View current = null;
+        if(size() > 0) {
+            //peek first else popAll will result in an exception
+            current = peekView();
+        }
+
+        popAll();
+
+
+        final Page page = factory.getPage();
+        page.onPageWillMount();
+
+        page.setPageManager(this);
+        page.setOutAnimator(outPageAnimatorFactory);
+        factory.setOutAnimator(outPageAnimatorFactory);
+
+        mFactoryStack.push(factory);
+        mPageStack.push(page);
+
+        View view = page.onCreateView(mPageContainer.getContext(), mPageContainer);
+        page.setView(view);
+        mPageContainer.addView(view);
+
+        page.onPageMounted(view);
+
+        final View finalCurrent = current;
+        view.getViewTreeObserver().addOnGlobalLayoutListener(new FirstLayoutListener(view) {
+            @Override
+            public void onFirstLayout(View view) {
+                // We have to wait until the View's first layout pass to start the animation,
+                // otherwise the view's width and height would be zero.
+                startAnimation(inPageAnimatorFactory, view, new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animator) {
+                        if(finalCurrent != null)
+                            mPageContainer.removeView(finalCurrent);
+
+                        if (!page.isVisible()) page.onPageIsVisible();
+                        if (!page.hasFocus()) page.onPageHasFocus();
+                    }
+                });
+            }
+        });
+
+        if(!mDeferNotification)
+            notifyListeners();
+
+        return page;
+    }
+
     protected void setBelowGone() {
-        if (container.getChildCount() > 1) {
-            container.getChildAt(container.getChildCount() - 2).setVisibility(View.GONE);
+        if (mPageContainer.getChildCount() > 1) {
+            mPageContainer.getChildAt(mPageContainer.getChildCount() - 2).setVisibility(View.GONE);
             mPageStack.get(size() - 2).onPageIsInvisible();
         }
     }
 
     protected void setBelowVisible() {
-        if (container.getChildCount() > 1) {
-            container.getChildAt(container.getChildCount() - 2).setVisibility(View.VISIBLE);
+        if (mPageContainer.getChildCount() > 1) {
+            mPageContainer.getChildAt(mPageContainer.getChildCount() - 2).setVisibility(View.VISIBLE);
         }
     }
 
@@ -213,26 +304,18 @@ public final class PageManager {
     public Page goBack(PageAnimatorFactory outPageAnimatorFactory) {
         if (!shouldPop()) return null;
 
-        mFactoryStack.pop();//let's remove the factory
-        final Page popped = mPageStack.pop();
         final View view = peekView();
+
+        final Page popped = pop();
 
         if(outPageAnimatorFactory == null)
             outPageAnimatorFactory = popped.getOutAnimator();
-
-        if(popped.hasFocus())
-            popped.onPageLostFocus();
-
-        if(popped.isVisible())
-            popped.onPageIsInvisible();
-
-        popped.onPageWillUnMount();
 
         setBelowVisible();
         startAnimation(outPageAnimatorFactory, view, new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animator) {
-            container.removeView(view);
+            mPageContainer.removeView(view);
 
             Page page = peek();
             page.onPageIsVisible();
@@ -267,7 +350,7 @@ public final class PageManager {
         if (size() == 0) {
             throw new EmptyStackException();
         }
-        return container.getChildAt(container.getChildCount() - 1);
+        return mPageContainer.getChildAt(mPageContainer.getChildCount() - 1);
     }
 
     /**
@@ -278,13 +361,31 @@ public final class PageManager {
     }
 
     protected void clear() {
-        mDeferNotification = true;
-        while (goBack() != null)
-            ;//intended empty body
-        mDeferNotification = false;
+        popAll();
 
-        if(!mIsDestroying)
-            notifyListeners();
+        mPageContainer.removeAllViews();
+    }
+
+    protected Page pop() {
+        mFactoryStack.pop();//let's remove the factory
+        final Page popped = mPageStack.pop();
+
+        if(popped.hasFocus())
+            popped.onPageLostFocus();
+
+        if(popped.isVisible())
+            popped.onPageIsInvisible();
+
+        popped.onPageWillUnMount();
+
+        return popped;
+    }
+
+    protected Page popAll() {
+        Page last = null;
+        while (!mFactoryStack.isEmpty()) last = pop();
+
+        return last;
     }
 
     /**
@@ -326,7 +427,7 @@ public final class PageManager {
             throw new EmptyStackException();
         }
         if (size() == 1) {
-            if(delegate != null && !mIsDestroying)
+            if(delegate != null)
                 delegate.onStackEmpty();
 
             return false;
@@ -380,7 +481,6 @@ public final class PageManager {
 
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
-        mIsDestroying = true;
         // The activity is about to be destroyed.
         clear();
     }
