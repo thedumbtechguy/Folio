@@ -22,7 +22,7 @@ public abstract class BasePage implements Page {
     private boolean mIsMounted;
     private boolean mHasFocus;
     private boolean mIsVisible;
-    private PageAnimatorFactory mOutAnimator;
+    private PageAnimatorFactory mAnimatorFactory;
     private View mView;
 
     @Override
@@ -120,20 +120,20 @@ public abstract class BasePage implements Page {
 
     @Override
     public PageManager getNestedPageManager(ViewGroup container) {
-        if(peekNestedPageManager() != null)
+        if(peekNestedPageManager() == null)
             mNestedPageManager = mStack.getNestedPageManager(container);
 
         return mNestedPageManager;
     }
 
     @Override
-    public void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory) {
-        mOutAnimator = outPageAnimatorFactory;
+    public void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory) {
+        mAnimatorFactory = outPageAnimatorFactory;
     }
 
     @Override
-    public PageAnimatorFactory getOutAnimator() {
-        return mOutAnimator;
+    public PageAnimatorFactory getAnimatorFactory() {
+        return mAnimatorFactory;
     }
 
     @Override

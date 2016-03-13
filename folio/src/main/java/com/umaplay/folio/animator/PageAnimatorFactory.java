@@ -10,5 +10,7 @@ import java.io.Serializable;
  * Interface for creating Animator instances for goTo() and goBack() transitions.
  */
 public interface PageAnimatorFactory extends Serializable {
-    Animator createAnimator(View view);
+    Animator createInAnimator(View view);
+    Animator createOutAnimator(View view);
+    void undoOutAnimation(View view);
 }

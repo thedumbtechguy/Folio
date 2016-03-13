@@ -11,6 +11,6 @@ import java.io.Serializable;
  */
 public interface PageFactory extends Serializable {
     Page getPage();
-    void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory);
-    PageAnimatorFactory getOutAnimator();
+    void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory);
+    PageAnimatorFactory getAnimatorFactory();
 }

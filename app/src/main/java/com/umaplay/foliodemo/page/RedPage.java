@@ -1,5 +1,6 @@
 package com.umaplay.foliodemo.page;
 
+import android.animation.Animator;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.util.Log;
@@ -10,10 +11,9 @@ import android.view.ViewGroup;
 import com.umaplay.folio.BasePage;
 import com.umaplay.folio.BasePageFactory;
 import com.umaplay.folio.Page;
-import com.umaplay.folio.PageFactory;
+import com.umaplay.folio.animator.AnimatorUtils;
+import com.umaplay.folio.animator.PageAnimatorFactory;
 import com.umaplay.foliodemo.R;
-import com.umaplay.foliodemo.animation.CircularHide;
-import com.umaplay.foliodemo.animation.CircularReveal;
 
 /**
  * Created by user on 2/28/2016.
@@ -38,9 +38,9 @@ public class RedPage extends BasePage {
 
         view.findViewById(R.id.red_button_go_to_green).setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(final View v) {
                 Log.d("testing", "RedPage pushing GreenView");
-                getPageManager().goTo(new GreenPage.GreenPageFactory(), new CircularReveal(), new CircularHide());
+                getPageManager().goTo(new GreenPage.GreenPageFactory(), new GreenPage.AnimatorFactory());
             }
         });
     }

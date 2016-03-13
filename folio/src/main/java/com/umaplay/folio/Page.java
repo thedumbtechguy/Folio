@@ -35,8 +35,8 @@ public interface Page extends Serializable {
     PageManager peekNestedPageManager();
     PageManager getNestedPageManager(ViewGroup container);
 
-    void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory);
-    PageAnimatorFactory getOutAnimator();
+    void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory);
+    PageAnimatorFactory getAnimatorFactory();
 
     Context getContext();
 }

@@ -5,10 +5,12 @@ package com.umaplay.folio;
  */
 public interface StackChangedListener {
     /**
-     * Called when BOTH the PageManager's size AND the top View in the ViewGroup container have
-     * changed. For a goTo with an animation, this happens before the animation starts (right after
-     * the new View is added to the container). For a goBack with an animation, this happens after the
-     * animation completes (right after the old view is removed from the container).
+     * Called when BOTH the PageManager's size AND the top Page in the stack have changed.
+     * Depending on the action, the top View in the container might not have changed yet.
+     * This is called before the animation starts.
+     * For a goTo/replace, the Page has pushed onto the stack and it's view is at the top of the container.
+     * For a goBack/replaceExceptFirst/gotoFirst, the Page has been popped from the stack so we have the previous Page on top but
+     *  the old view still remains and will be removed after the animation completes.
      */
     void onStackChanged();
 }

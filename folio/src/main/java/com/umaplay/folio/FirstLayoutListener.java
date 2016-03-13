@@ -5,7 +5,7 @@ import android.view.ViewTreeObserver;
 
 abstract class FirstLayoutListener implements ViewTreeObserver.OnGlobalLayoutListener {
 
-    private final View view;
+    private View view;
     private boolean first = true;
 
     FirstLayoutListener(View view) {
@@ -16,6 +16,8 @@ abstract class FirstLayoutListener implements ViewTreeObserver.OnGlobalLayoutLis
     public void onGlobalLayout() {
         if (view.getWidth() > 0 && view.getHeight() > 0 && first) {
             onFirstLayout(view);
+
+            view = null;
             first = false;
         }
     }

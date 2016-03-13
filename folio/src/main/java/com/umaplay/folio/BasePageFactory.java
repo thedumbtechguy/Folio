@@ -7,15 +7,15 @@ import com.umaplay.folio.animator.PageAnimatorFactory;
  */
 public abstract class BasePageFactory implements PageFactory {
 
-    private PageAnimatorFactory mOutAnimator;
+    private PageAnimatorFactory mAnimatorFactory;
 
     @Override
-    public void setOutAnimator(PageAnimatorFactory outPageAnimatorFactory) {
-        mOutAnimator = outPageAnimatorFactory;
+    public void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory) {
+        mAnimatorFactory = outPageAnimatorFactory;
     }
 
     @Override
-    public PageAnimatorFactory getOutAnimator() {
-        return mOutAnimator;
+    public PageAnimatorFactory getAnimatorFactory() {
+        return mAnimatorFactory;
     }
 }
