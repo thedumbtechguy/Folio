@@ -37,7 +37,7 @@ public class AnimatorUtils {
     public static Animator createFadeInAnimator(View view) {
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "alpha", 0f, 1f);
         anim.setInterpolator(new LinearInterpolator());
-        anim.setDuration(400);
+        anim.setDuration(250);
 
         return anim;
     }
@@ -45,22 +45,22 @@ public class AnimatorUtils {
     public static Animator createFadeOutAnimator(View view) {
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "alpha", 1f, 0f);
         anim.setInterpolator(new LinearInterpolator());
-        anim.setDuration(400);
+        anim.setDuration(250);
 
         return anim;
     }
 
-    public static Animator createSlideInFromDownAnimator(View view) {
+    public static Animator createSlideInFromBottomAnimator(View view) {
         DisplayMetrics metrics = AnimatorUtils.getDisplayMetrics(view.getContext());
 
-        ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", -metrics.heightPixels, 0f);
+        ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", metrics.heightPixels, 0f);
         anim.setInterpolator(new AccelerateDecelerateInterpolator());
         anim.setDuration(300);
 
         return anim;
     }
 
-    public static Animator createSlideOutToDownAnimator(View view) {
+    public static Animator createSlideOutToBottomAnimator(View view) {
         DisplayMetrics metrics = AnimatorUtils.getDisplayMetrics(view.getContext());
 
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", 0f, metrics.heightPixels);
@@ -110,17 +110,18 @@ public class AnimatorUtils {
         return anim;
     }
 
-    public Animator createSlideInFromUpAnimator(View view) {
+    public static Animator createSlideInFromTopAnimator(View view) {
         DisplayMetrics metrics = AnimatorUtils.getDisplayMetrics(view.getContext());
 
-        ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", metrics.heightPixels, 0f);
+        ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", -metrics.heightPixels,
+                0f);
         anim.setInterpolator(new AccelerateDecelerateInterpolator());
         anim.setDuration(300);
 
         return anim;
     }
 
-    public static Animator createSlideOutToUpAnimator(View view) {
+    public static Animator createSlideOutToTopAnimator(View view) {
         DisplayMetrics metrics = AnimatorUtils.getDisplayMetrics(view.getContext());
 
         ObjectAnimator anim = ObjectAnimator.ofFloat(view, "translationY", 0f, -metrics.heightPixels);
