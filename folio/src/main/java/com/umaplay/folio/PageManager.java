@@ -5,11 +5,13 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 
+import com.squareup.leakcanary.RefWatcher;
 import com.umaplay.folio.animator.NoAnimationFactory;
 import com.umaplay.folio.animator.PageAnimatorFactory;
 
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.EmptyStackException;
 import java.util.List;
 import java.util.Stack;
+import java.util.UUID;
 
 import static com.umaplay.folio.Preconditions.checkNotNull;
 
@@ -25,21 +28,25 @@ import static com.umaplay.folio.Preconditions.checkNotNull;
  * responsible for View creation. All standard Java Stack operations are supported, with additional
  * methods for pushing and popping with animated transitions.
  */
-public final class PageManager {
+public class PageManager {
 
-    private static final String STACK_TAG = "STACK_TAG";
-    private static final String TAG = "Folio::PageManager";
+    private static final String STACK_TAG = "PageManager.STACK_TAG";
+    private static final String STATE_TAG = "PageManager.STATE_TAG";
+    public static final String VIEW_STATE_KEY = "PageManager.VIEW_STATE_KEY";
+    private static final String TAG = "Folio.PageManager";
 
     private final Stack<Page> mPageStack = new Stack<>();
     private final Stack<PageFactory> mFactoryStack = new Stack<>();
     private final ViewGroup mPageContainer;
-    private final PageStackDelegate delegate;
+    private final PageStackDelegate mPageStackDelegate;
     private final List<StackChangedListener> listeners = new ArrayList<>();
-    private boolean mHasStarted;
-    private boolean mHasResumed;
+    private final RefWatcher mRefWatcher;
+    private Bundle mPageStates = new Bundle();
+    protected boolean mHasStarted;
+    protected boolean mHasResumed;
     private boolean mDeferNotification;
     private boolean mDontAnimatePop = false;
-    private int nesting = 0;
+    protected int nesting = 0;
 
     /**
      * Constructor for PageManager instances
@@ -47,57 +54,28 @@ public final class PageManager {
      * @param container Any ViewGroup mPageContainer for navigation Views. Typically a FrameLayout
      * @param delegate  A PageStackDelegate responsible for "finishing" the navigation
      */
-    public PageManager(ViewGroup container, PageStackDelegate delegate, Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate: " + nesting);
-        checkNotNull(container, "mPageContainer == null");
-        checkNotNull(delegate, "delegate == null");
-
-        this.mPageContainer = container;
-        this.delegate = delegate;
-
-        if(savedInstanceState != null) restoreFromSavedInstanceState(savedInstanceState);
-    }
-
-    /**
-     * Constructor for child PageManager instances
-     * Used internally to give Pages the ability to have nested pages
-     *
-     * @param container Any ViewGroup mPageContainer for navigation Views. Typically a FrameLayout
-     */
-    private PageManager(ViewGroup container, int nesting) {
-        Log.d(TAG, "onCreateNested: " + nesting);
+    public PageManager(ViewGroup container, PageStackDelegate delegate, RefWatcher refWatcher,
+                       Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         checkNotNull(container, "container == null");
+        checkNotNull(refWatcher, "refWatcher == null");
 
         this.mPageContainer = container;
-        this.delegate = null;
-        this.nesting = nesting;
+        this.mRefWatcher = refWatcher;
+        this.mPageStackDelegate = delegate;
+
+        if(savedInstanceState != null) _onRestoreInstanceState(savedInstanceState);
     }
 
-    public PageManager getNestedPageManager(ViewGroup container) {
-        return new PageManager(container, nesting + 1);
+    public NestedPageManager getNestedPageManager(ViewGroup container, Bundle stateBundle) {
+        return new NestedPageManager(container, mRefWatcher, stateBundle, nesting + 1);
     }
 
+    protected Bundle getPageState(Page page) {
+        Bundle state = mPageStates.getBundle(page.getId());
+        mPageStates.remove(page.getId());//we no longer need it
 
-
-    @SuppressWarnings("unchecked")
-    protected void restoreFromSavedInstanceState(Bundle bundle) {
-        checkNotNull(bundle, "bundle == null");
-
-        Stack<PageFactory> savedStack = (Stack<PageFactory>) bundle.getSerializable(STACK_TAG);
-        checkNotNull(savedStack, "Bundle doesn't contain any PageManager state.");
-
-        Page topPage = null;
-        for (PageFactory pageFactory : savedStack) {
-            topPage = push(pageFactory, pageFactory.getAnimatorFactory());
-            topPage.getView().setVisibility(View.GONE);
-        }
-        notifyListeners();
-
-        if(topPage != null) {
-            topPage.getView().setVisibility(View.VISIBLE);
-            topPage.onPageIsVisible();
-            topPage.onPageHasFocus();
-        }
+        return state;
     }
 
 
@@ -126,7 +104,7 @@ public final class PageManager {
 
 
         final Page newTopPage = push(factory, pageAnimatorFactory);
-        View newTopView = newTopPage.getView();
+        View newTopView = mountTopPage(newTopPage, null);
 
         if(!mDeferNotification)
             notifyListeners();
@@ -142,16 +120,12 @@ public final class PageManager {
                 AnimatorListenerAdapter listener = new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animator) {
-                        if (belowView != null) {
-                            assert belowPage != null;
-
-                            belowView.setVisibility(View.GONE);
-                            belowPage.onPageLostFocus();
-                            belowPage.onPageIsInvisible();
+                        if (belowPage != null) {
+                            unmountPage(belowPage, true);
                         }
 
-                        if (!newTopPage.isVisible()) newTopPage.onPageIsVisible();
-                        if (!newTopPage.hasFocus()) newTopPage.onPageHasFocus();
+                        newTopPage.onPageIsVisible();
+                        newTopPage.onPageHasFocus();
                     }
                 };
 
@@ -167,7 +141,7 @@ public final class PageManager {
                 }
 
 
-                //fingers crossed!
+                //fingers crossed! Maybe this bug has been fixed
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
                     topView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                 }
@@ -188,8 +162,8 @@ public final class PageManager {
      * @param factory responsible for the creation of the new Page in the navigation stack
      * @return the provided Page
      */
-    public Page replace(PageFactory factory) {
-        return replace(factory, new NoAnimationFactory());
+    public Page replaceAll(PageFactory factory) {
+        return replaceAll(factory, new NoAnimationFactory());
     }
 
     /**
@@ -201,18 +175,24 @@ public final class PageManager {
      *                        onto and off the navigation stack
      * @return the provided Page
      */
-    public Page replace(final PageFactory factory, final PageAnimatorFactory pageAnimatorFactory) {
+    public Page replaceAll(final PageFactory factory, final PageAnimatorFactory pageAnimatorFactory) {
         checkNotNull(factory, "factory == null");
         checkNotNull(pageAnimatorFactory, "inPageAnimatorFactory == null");
 
-        final Page currentPage = size() > 0 ? peek() : null;
-        final View currentView = size() > 0 ? peekView() : null;
+        int limit = size() - 1;
+        for(int i = 0; i < limit; i++) {//we remove all the pages except the top
+            Page popped = remove(i);
 
-        popAll();
+            unmountPage(popped, false);//this shouldn't even do anything since the pages are
+            // already unmounted and invisible
+            destroyPage(popped);
+        }
+
+        final Page currentPage = size() == 1 ? pop() : null;
+        final View currentView = size() == 1 ? peekView() : null;
 
         final Page newTopPage = push(factory, pageAnimatorFactory);
-        View newTopView = newTopPage.getView();
-
+        View newTopView = mountTopPage(newTopPage, null);
 
         if(!mDeferNotification)
             notifyListeners();
@@ -226,12 +206,13 @@ public final class PageManager {
                 AnimatorListenerAdapter listener = new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animator) {
-                        if (currentView != null) {
-                            mPageContainer.removeView(currentView);
+                        if (currentPage != null) {
+                            unmountPage(currentPage, true);
+                            destroyPage(currentPage);//we are done with this
                         }
 
-                        if (!newTopPage.isVisible()) newTopPage.onPageIsVisible();
-                        if (!newTopPage.hasFocus()) newTopPage.onPageHasFocus();
+                        newTopPage.onPageIsVisible();
+                        newTopPage.onPageHasFocus();
                     }
                 };
 
@@ -285,38 +266,22 @@ public final class PageManager {
         checkNotNull(factory, "factory == null");
         checkNotNull(pageAnimatorFactory, "inPageAnimatorFactory == null");
 
+        if(size() <= 1) return goTo(factory, pageAnimatorFactory);//only one page let's go to the next
 
-        if(size() <= 1) return goTo(factory, pageAnimatorFactory);
+        int limit = size() - 1;
+        for(int i = 1; i < limit; i++) {//we remove all the pages in between first and the top
+            Page popped = remove(i);
 
-
-        View topView = peekView();
-
-        while(size() > 2) {
-            Page popped = pop();
-
-            if(popped.getView() != topView)
-                mPageContainer.removeView(popped.getView());
+            unmountPage(popped, false);//this shouldn't even do anything since the pages are
+            // already unmounted and invisible
+            destroyPage(popped);
         }
 
-        if(mPageContainer.getChildCount() == 3) {
-            mPageContainer.removeViewAt(1);//remove the middle view
-        }
+        push(factory, pageAnimatorFactory);
 
-        final Page page = factory.getPage();
-        page.onPageWillMount();
+        final Page page = add(1, factory, pageAnimatorFactory);
 
-        page.setPageManager(this);
-        page.setAnimatorFactory(pageAnimatorFactory);
-        factory.setAnimatorFactory(pageAnimatorFactory);
-
-        mFactoryStack.add(1, factory);
-        mPageStack.add(1, page);
-
-        View view = page.onCreateView(mPageContainer.getContext(), mPageContainer);
-        page.setView(view);
-        mPageContainer.addView(view, 1);
-
-        page.onPageMounted(view);
+        mountBottomPage(page, null);
 
         goBack();
 
@@ -326,21 +291,19 @@ public final class PageManager {
     /**
      * Go to first page in the stack
      * Removes all but the first Page in the stack
+     * We need to be aware that when using this, the page between the top and first are destroyed
+     * first. Then the top page is removed leaving the first.
      */
     public void gotoFirst() {
         if(size() == 1) return;//we are on the first page already
 
-        View topView = peekView();
+        int limit = size() - 1;
+        for(int i = 1; i < limit; i++) {//we remove all the pages in between first and the top
+            Page popped = remove(i);
 
-        while(size() > 2) {
-            Page popped = pop();
-
-            if(popped.getView() != topView)
-                mPageContainer.removeView(popped.getView());
-        }
-
-        if(mPageContainer.getChildCount() == 3) {
-            mPageContainer.removeViewAt(1);//remove the middle view
+            unmountPage(popped, false);//this shouldn't even do anything since the pages are
+            // already unmounted and invisible
+            destroyPage(popped);
         }
 
         mDontAnimatePop = true;
@@ -348,10 +311,10 @@ public final class PageManager {
         mDontAnimatePop = false;
     }
 
-    protected void setBelowLostFocus() {
-        Page below = peekBelow();
-        if(below != null) below.onPageLostFocus();
-    }
+//    protected void setBelowLostFocus() {
+//        Page below = peekBelow();
+//        if(below != null) below.onPageLostFocus();
+//    }
 
     /**
      * Pops the top Page off the navigation stack
@@ -362,27 +325,28 @@ public final class PageManager {
     public Page goBack() {
         if (!shouldPop()) return null;
 
-
-        View belowView = peekViewBelow();
         final Page pageBelow = peekBelow();
 
         //shouldn't be null because of shouldPop
-        assert belowView != null;
         assert pageBelow != null;
+
+        //recreate the page's view
+        View belowView = mountBottomPage(pageBelow, getPageState(pageBelow));
 
         final View currentTopView = peekView();
         final Page currentTopPage = pop();
         PageAnimatorFactory pageAnimatorFactory = currentTopPage.getAnimatorFactory();
-
+//        mPageStates.remove(currentTopPage.getId());
 
         belowView.setVisibility(View.VISIBLE);
         final Runnable popFinisher = new Runnable() {
             @Override
             public void run() {
-                mPageContainer.removeView(currentTopView);
+                unmountPage(currentTopPage, false);
+                destroyPage(currentTopPage);
 
-                if(!pageBelow.isVisible()) pageBelow.onPageIsVisible();
-                if(!pageBelow.hasFocus()) pageBelow.onPageHasFocus();
+                pageBelow.onPageIsVisible();
+                pageBelow.onPageHasFocus();
             }
         };
 
@@ -409,6 +373,7 @@ public final class PageManager {
 
         return currentTopPage;
     }
+
 
     /**
      * @return the Page responsible for creating the top View on the navigation stack
@@ -464,58 +429,144 @@ public final class PageManager {
         return mPageStack.size();
     }
 
-
     protected Page push(PageFactory factory, PageAnimatorFactory pageAnimatorFactory) {
-        final Page newTopPage = factory.getPage();
-
-        newTopPage.onPageWillMount();
-
-        newTopPage.setPageManager(this);
-        newTopPage.setAnimatorFactory(pageAnimatorFactory);
-        factory.setAnimatorFactory(pageAnimatorFactory);
+        Page page = addPage(factory, pageAnimatorFactory);
 
         mFactoryStack.push(factory);
-        mPageStack.push(newTopPage);
+        mPageStack.push(page);
 
-        View newTopView = newTopPage.onCreateView(mPageContainer.getContext(), mPageContainer);
-        newTopPage.setView(newTopView);
-        mPageContainer.addView(newTopView);
-
-        newTopPage.onPageMounted(newTopView);
-
-        return newTopPage;
+        return page;
     }
 
-    protected void clear() {
-        popAll();
+    protected Page add(int index, PageFactory factory, PageAnimatorFactory pageAnimatorFactory) {
+        Page page = addPage(factory, pageAnimatorFactory);
 
-        mPageContainer.removeAllViews();
+        mFactoryStack.add(index, factory);
+        mPageStack.add(index, page);
+
+        return page;
+    }
+
+    protected Page addPage(PageFactory factory, PageAnimatorFactory pageAnimatorFactory) {
+        if(factory.getId() == null) {
+            factory.setId(UUID.randomUUID().toString());
+        }
+
+        final Page page = factory.getPage();
+
+        page.setPageManager(this);
+        page.setAnimatorFactory(pageAnimatorFactory);
+        factory.setAnimatorFactory(pageAnimatorFactory);
+
+        page.setId(factory.getId());
+
+        page.onCreate();
+
+        return page;
     }
 
     protected Page pop() {
         mFactoryStack.pop();//let's remove the factory
         final Page popped = mPageStack.pop();
 
-        if(popped.hasFocus())
-            popped.onPageLostFocus();
-
-        if(popped.isVisible())
-            popped.onPageIsInvisible();
-
-        popped.onPageWillUnMount();
-
-        if (popped.peekNestedPageManager() != null)
-            popped.peekNestedPageManager().onDestroy();
+        mPageStates.remove(popped.getId());//size - 1 is usually it, but we already popped
 
         return popped;
     }
 
-    protected Page popAll() {
-        Page last = null;
-        while (!mFactoryStack.isEmpty()) last = pop();
+    protected Page remove(int index) {
+        mFactoryStack.remove(index);
+        final Page popped = mPageStack.remove(index);
 
-        return last;
+        mPageStates.remove(popped.getId());
+
+        return popped;
     }
+
+    protected View createView(Page page, Bundle state) {
+        View view = page.onCreateView(mPageContainer.getContext(), mPageContainer);
+        if(state != null) {
+            view.restoreHierarchyState(state.getSparseParcelableArray(VIEW_STATE_KEY));
+        }
+
+        return view;
+    }
+
+    protected View mountTopPage(Page page, Bundle state) {
+        View newTopView = createView(page, state);
+        mPageContainer.addView(newTopView);
+        page.onViewMounted(newTopView);
+        if(state != null)
+            page.onRestoreState(state);
+
+        return page.getView();
+    }
+
+    protected View mountBottomPage(Page page, Bundle state) {
+        View view = createView(page, state);
+        mPageContainer.addView(view, 0);
+        page.onViewMounted(view);
+        if(state != null)
+          page.onRestoreState(state);
+
+        return page.getView();
+    }
+
+
+    protected void unmountPage(Page page, boolean canBeRestored) {
+        if(page.hasFocus()) page.onPageLostFocus();
+        if(page.isVisible()) page.onPageIsInvisible();
+
+        if(page.isMounted()) {
+            View view = page.getView();
+            view.setVisibility(View.GONE);
+            if(canBeRestored) {
+                savePageState(page);
+            }
+
+            page.onViewUnmounted();
+            mPageContainer.removeView(view);
+            mRefWatcher.watch(view);//let's make sure the view is collected
+        }
+    }
+
+    private void savePageState(Page page) {
+        int pageIndex = mPageStack.indexOf(page);
+        if(pageIndex == -1) throw new IllegalStateException("Cannot save state of " +
+                "Page which is not in the stack");
+
+        SparseArray<Parcelable> viewState = new SparseArray<>();
+        View view = page.getView();
+        view.saveHierarchyState(viewState);
+        Bundle state = new Bundle();
+        page.onSaveState(state);
+        state.putSparseParcelableArray(VIEW_STATE_KEY, viewState);
+        mPageStates.putBundle(page.getId(), state);
+    }
+
+
+    private void destroyPage(Page page) {
+        page.onDestroy();
+
+        mRefWatcher.watch(page);
+    }
+
+    protected void clear() {
+        Page page;
+        while (!mFactoryStack.isEmpty()) {
+            page = pop();
+            unmountPage(page, false);
+            destroyPage(page);
+        }
+    }
+
+
+//    protected Page popAll() {
+//        Page last = null;
+//        while (!mFactoryStack.isEmpty()) last = remove();
+//
+//        return last;
+//    }
 
     /**
      * Adds a StackChangedListener for stack-changed events
@@ -557,8 +608,8 @@ public final class PageManager {
             throw new EmptyStackException();
         }
         if (size() == 1) {
-            if(delegate != null)
-                delegate.onStackEmpty();
+            if(mPageStackDelegate != null)
+                mPageStackDelegate.onStackEmpty();
 
             return false;
         }
@@ -570,7 +621,6 @@ public final class PageManager {
             listener.onStackChanged();
         }
     }
-
 
 
     protected void onStart() {
@@ -600,21 +650,6 @@ public final class PageManager {
         if(page.hasFocus()) page.onPageLostFocus();
     }
 
-    protected void onStop() {
-        Log.d(TAG, "onStop: " + nesting);
-        // The activity is no longer visible (it is now "stopped")
-        mHasStarted = false;
-
-        Page page = peek();
-        if(page.isVisible()) page.onPageIsInvisible();
-    }
-
-    protected void onDestroy() {
-        Log.d(TAG, "onDestroy: " + nesting);
-        // The activity is about to be destroyed.
-        clear();
-    }
-
     /**
      * Saves the PageManager state (an ordered stack of PageFactories) to the provided Bundle using
      * the provided tag
@@ -625,7 +660,101 @@ public final class PageManager {
         Log.d(TAG, "onSaveInstanceState: " + nesting);
         checkNotNull(outState, "bundle == null");
 
+        Page page = peek();
+        savePageState(page);
+
         outState.putSerializable(STACK_TAG, (Stack) mFactoryStack.clone());
+        outState.putBundle(STATE_TAG, (Bundle) mPageStates.clone());
+    }
+
+    protected void onStop() {
+        Log.d(TAG, "onStop: " + nesting);
+        // The activity is no longer visible (it is now "stopped")
+        mHasStarted = false;
+
+        Page page = peek();
+        unmountPage(page, false);//instance state has already been saved if indeed it needs to be
+    }
+
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy: " + nesting);
+        // The host is about to be destroyed.
+        clear();
+
+        mPageStates = null;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void _onRestoreInstanceState(Bundle bundle) {
+        checkNotNull(bundle, "bundle == null");
+
+        Stack<PageFactory> savedStack = (Stack<PageFactory>) bundle.getSerializable(STACK_TAG);
+        mPageStates = bundle.getBundle(STATE_TAG);
+        checkNotNull(savedStack, "Bundle doesn't contain PageManager state.");
+        checkNotNull(mPageStates, "Bundle doesn't contain PageManager state.");
+
+        Page topPage = null;
+        for (PageFactory pageFactory : savedStack) {
+            topPage = push(pageFactory, pageFactory.getAnimatorFactory());
+        }
+
+        if(topPage != null) {
+            mountTopPage(topPage, getPageState(topPage));
+            notifyListeners();
+
+            topPage.onPageIsVisible();
+            topPage.onPageHasFocus();
+        }
+        else
+            notifyListeners();
+    }
+
+
+    public static class NestedPageManager extends PageManager {
+        private static final String TAG = "Folio.NestedPageManager";
+        /**
+         * Constructor for child PageManager instances
+         * Used internally to give Pages the ability to have nested pages
+         *
+         * @param container Any ViewGroup mPageContainer for navigation Views. Typically a FrameLayout
+         * @param stateBundle
+         */
+        private NestedPageManager(ViewGroup container, RefWatcher refWatcher, Bundle stateBundle, int
+                nesting) {
+            super(container, null, refWatcher, stateBundle);
+
+            Log.d(TAG, "onCreateNested: " + nesting);
+
+            this.nesting = nesting;
+        }
+
+
+        protected void onStart() {
+            Log.d(TAG, "onStart: " + nesting);
+            // The activity is about to become visible.
+            mHasStarted = true;
+
+            if(size() > 0) {
+                Page page = peek();
+                if (!page.isVisible()) page.onPageIsVisible();
+            }
+        }
+
+        protected void onResume() {
+            Log.d(TAG, "onResume: " + nesting);
+            // The activity has become visible (it is now "resumed").
+            mHasResumed = true;
+
+            if(size() > 0) {
+                Page page = peek();
+                if (!page.hasFocus()) page.onPageHasFocus();
+            }
+        }
+
+
+        public void onRestoreInstanceState(Bundle bundle) {
+            _onRestoreInstanceState(bundle);
+        }
     }
 
 }

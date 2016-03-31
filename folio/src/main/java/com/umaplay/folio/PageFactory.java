@@ -13,4 +13,7 @@ public interface PageFactory extends Serializable {
     Page getPage();
     void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory);
     PageAnimatorFactory getAnimatorFactory();
+
+    void setId(String id);
+    String getId();
 }

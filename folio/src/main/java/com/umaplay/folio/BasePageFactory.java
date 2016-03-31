@@ -8,6 +8,7 @@ import com.umaplay.folio.animator.PageAnimatorFactory;
 public abstract class BasePageFactory implements PageFactory {
 
     private PageAnimatorFactory mAnimatorFactory;
+    private String mId;
 
     @Override
     public void setAnimatorFactory(PageAnimatorFactory outPageAnimatorFactory) {
@@ -17,5 +18,14 @@ public abstract class BasePageFactory implements PageFactory {
     @Override
     public PageAnimatorFactory getAnimatorFactory() {
         return mAnimatorFactory;
+    }
+
+
+    public void setId(String id) {
+        mId = id;
+    }
+
+    public String getId() {
+        return mId;
     }
 }

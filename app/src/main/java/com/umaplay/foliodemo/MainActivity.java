@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.umaplay.folio.App;
 import com.umaplay.folio.PageManager;
 import com.umaplay.folio.PagedActivity;
 import com.umaplay.folio.animator.AnimatorUtils;
@@ -19,7 +20,8 @@ public class MainActivity extends PagedActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        setPageManager(new PageManager((ViewGroup) findViewById(R.id.container), this, savedInstanceState));
+        setPageManager(new PageManager((ViewGroup) findViewById(R.id.container), this,
+                App.getRefWatcher(), savedInstanceState));
 
         if (savedInstanceState == null) {
             getPageManager().goTo(new RedPage.RedPageFactory());
