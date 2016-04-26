@@ -673,7 +673,7 @@ public class PageManager {
         mHasStarted = false;
 
         Page page = peek();
-        unmountPage(page, false);//instance state has already been saved if indeed it needs to be
+        if(page.isVisible()) page.onPageIsInvisible();
     }
 
     protected void onDestroy() {
