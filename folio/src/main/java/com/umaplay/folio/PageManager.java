@@ -266,26 +266,15 @@ public class PageManager {
         checkNotNull(factory, "factory == null");
         checkNotNull(pageAnimatorFactory, "inPageAnimatorFactory == null");
 
-        if(size() <= 1) return goTo(factory, pageAnimatorFactory);//only one page let's go to the next
-
-        int limit = size() - 1;
-        for(int i = 1; i < limit; i++) {//we remove all the pages in between first and the top
-            Page popped = remove(i);
+        while(size() > 1) {
+            Page popped = pop();
 
             unmountPage(popped, false);//this shouldn't even do anything since the pages are
             // already unmounted and invisible
             destroyPage(popped);
         }
 
-        push(factory, pageAnimatorFactory);
-
-        final Page page = add(1, factory, pageAnimatorFactory);
-
-        mountBottomPage(page, null);
-
-        goBack();
-
-        return page;
+        return goTo(factory, pageAnimatorFactory);
     }
 
     /**
@@ -301,8 +290,7 @@ public class PageManager {
         for(int i = 1; i < limit; i++) {//we remove all the pages in between first and the top
             Page popped = remove(i);
 
-            unmountPage(popped, false);//this shouldn't even do anything since the pages are
-            // already unmounted and invisible
+            unmountPage(popped, false);
             destroyPage(popped);
         }
 
