@@ -179,66 +179,14 @@ public class PageManager {
         checkNotNull(factory, "factory == null");
         checkNotNull(pageAnimatorFactory, "inPageAnimatorFactory == null");
 
-        int limit = size() - 1;
-        for(int i = 0; i < limit; i++) {//we remove all the pages except the top
-            Page popped = remove(i);
+        while(size() > 0) {
+            Page popped = pop();
 
-            unmountPage(popped, false);//this shouldn't even do anything since the pages are
-            // already unmounted and invisible
+            unmountPage(popped, false);
             destroyPage(popped);
         }
 
-        final Page currentPage = size() == 1 ? pop() : null;
-        final View currentView = size() == 1 ? peekView() : null;
-
-        final Page newTopPage = push(factory, pageAnimatorFactory);
-        View newTopView = mountTopPage(newTopPage, null);
-
-        if(!mDeferNotification)
-            notifyListeners();
-
-
-        newTopView.getViewTreeObserver().addOnGlobalLayoutListener(new FirstLayoutListener(newTopView) {
-            @Override
-            public void onFirstLayout(View topView) {
-                // We have to wait until the View's first layout pass to start the animation,
-                // otherwise the view's width and height would be zero.
-                AnimatorListenerAdapter listener = new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animator) {
-                        if (currentPage != null) {
-                            unmountPage(currentPage, true);
-                            destroyPage(currentPage);//we are done with this
-                        }
-
-                        newTopPage.onPageIsVisible();
-                        newTopPage.onPageHasFocus();
-                    }
-                };
-
-                Animator in = pageAnimatorFactory.createInAnimator(topView);
-                if (currentView != null) {
-                    assert currentPage != null;
-
-                    Animator out = currentPage.getAnimatorFactory().createOutAnimator(currentView);
-                    startAnimation(listener, in, out);
-                } else {
-                    startAnimation(listener, in);
-                }
-
-
-                //fingers crossed!
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    topView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                }
-                else {
-                    topView.getViewTreeObserver().removeGlobalOnLayoutListener(this);
-                }
-            }
-        });
-
-
-        return newTopPage;
+        return goTo(factory, pageAnimatorFactory);
     }
 
 
@@ -269,8 +217,7 @@ public class PageManager {
         while(size() > 1) {
             Page popped = pop();
 
-            unmountPage(popped, false);//this shouldn't even do anything since the pages are
-            // already unmounted and invisible
+            unmountPage(popped, false);
             destroyPage(popped);
         }
 
@@ -286,31 +233,35 @@ public class PageManager {
     public void gotoFirst() {
         if(size() == 1) return;//we are on the first page already
 
-        int limit = size() - 1;
-        for(int i = 1; i < limit; i++) {//we remove all the pages in between first and the top
+        for(int i = size() - 2; i > 0; i--) {//we remove all the pages in between first and the top
             Page popped = remove(i);
 
             unmountPage(popped, false);
             destroyPage(popped);
         }
 
-        mDontAnimatePop = true;
-        goBack();
-        mDontAnimatePop = false;
+        goBack(false);
     }
-
-//    protected void setBelowLostFocus() {
-//        Page below = peekBelow();
-//        if(below != null) below.onPageLostFocus();
-//    }
 
     /**
      * Pops the top Page off the navigation stack
+     * Transition will be animated
      *
      * @return the Page instance that was used for the creation of the top View on the
      * navigation stack
      */
     public Page goBack() {
+        return goBack(true);
+    }
+
+    /**
+     * Pops the top Page off the navigation stack
+     *
+     * @param animateTransition should transition be animated
+     * @return the Page instance that was used for the creation of the top View on the
+     * navigation stack
+     */
+    public Page goBack(boolean animateTransition) {
         if (!shouldPop()) return null;
 
         final Page pageBelow = peekBelow();
@@ -324,9 +275,7 @@ public class PageManager {
         final View currentTopView = peekView();
         final Page currentTopPage = pop();
         PageAnimatorFactory pageAnimatorFactory = currentTopPage.getAnimatorFactory();
-//        mPageStates.remove(currentTopPage.getId());
 
-        belowView.setVisibility(View.VISIBLE);
         final Runnable popFinisher = new Runnable() {
             @Override
             public void run() {
@@ -342,11 +291,7 @@ public class PageManager {
         if (!mDeferNotification)
             notifyListeners();
 
-        if(mDontAnimatePop) {
-            pageBelow.getAnimatorFactory().undoOutAnimation(belowView);
-            popFinisher.run();
-        }
-        else {
+        if(animateTransition){
             Animator out = pageAnimatorFactory.createOutAnimator(currentTopView);
             AnimatorListenerAdapter listener = new AnimatorListenerAdapter() {
                 @Override
@@ -357,6 +302,10 @@ public class PageManager {
 
             Animator in = pageBelow.getAnimatorFactory().createInAnimator(belowView);
             startAnimation(listener, out, in);
+        }
+        else {
+            pageBelow.getAnimatorFactory().undoOutAnimation(belowView);
+            popFinisher.run();
         }
 
         return currentTopPage;
@@ -484,8 +433,9 @@ public class PageManager {
         View newTopView = createView(page, state);
         mPageContainer.addView(newTopView);
         page.onViewMounted(newTopView);
-        if(state != null)
+        if (state != null)
             page.onRestoreState(state);
+
 
         return page.getView();
     }
@@ -507,7 +457,7 @@ public class PageManager {
 
         if(page.isMounted()) {
             View view = page.getView();
-            view.setVisibility(View.GONE);
+
             if(canBeRestored) {
                 savePageState(page);
             }
@@ -547,14 +497,6 @@ public class PageManager {
             destroyPage(page);
         }
     }
-
-
-//    protected Page popAll() {
-//        Page last = null;
-//        while (!mFactoryStack.isEmpty()) last = remove();
-//
-//        return last;
-//    }
 
     /**
      * Adds a StackChangedListener for stack-changed events
