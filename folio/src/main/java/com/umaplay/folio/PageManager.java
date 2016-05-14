@@ -618,7 +618,9 @@ public class PageManager {
     protected void _onRestoreInstanceState(Bundle bundle) {
         checkNotNull(bundle, "bundle == null");
 
-        Stack<PageFactory> savedStack = (Stack<PageFactory>) bundle.getSerializable(STACK_TAG);
+        Stack<PageFactory> savedStack = new Stack<>();
+        savedStack.addAll((List<PageFactory>) bundle.getSerializable(STACK_TAG));
+
         mPageStates = bundle.getBundle(STATE_TAG);
         checkNotNull(savedStack, "Bundle doesn't contain PageManager state.");
         checkNotNull(mPageStates, "Bundle doesn't contain PageManager state.");
