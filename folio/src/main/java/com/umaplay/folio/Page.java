@@ -208,12 +208,12 @@ public abstract class Page implements Serializable {
 //    void onCreate();
 //    View onCreateView(Context context, ViewGroup container);
 //    void onViewMounted(View view);
-//    void onRestoreState();
+//    void onRestoreState(Bundle);
 //    void onPageIsVisible();
 //    void onPageHasFocus();
 //    void onPageLostFocus();
 //    void onPageIsInvisible();
-//    void onSaveState();
+//    void onSaveState(Bundle);
 //    void onViewUnmounted();
 //    void onDestroy();
 }

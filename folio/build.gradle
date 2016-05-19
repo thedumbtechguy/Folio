@@ -22,7 +22,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.3.0'
     compile 'com.android.support:support-annotations:23.3.0'
 
-    debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta2' // or 1.4-beta2
-    releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2' // or 1.4-beta2
-    testCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2' // or 1.4-beta2
+    debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta2'
+    releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
+    testCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
 }
