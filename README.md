@@ -151,7 +151,7 @@ If the Factory cannot be serialized, the app will crash.
 ### Contributing
 
 Thank you for taking the time to contribute.
-But before you do, please read our [contribution guidelines](CONTRIBUTING.MD). They are simple, we promise.
+But before you do, please read our [contribution guidelines](CONTRIBUTING.md). They are simple, we promise.
 
 
 ### Todo
