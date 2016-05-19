@@ -16,7 +16,7 @@ Apps using Folio in production
 
 Folio follows [Semantic Versioning](http://semver.org/).
 
-[![](https://www.bintray.com/docs/images/bintray_badge_color.png)](https://bintray.com/frostymarvelous/maven/folio``/view?source=watch)
+[![](https://www.bintray.com/docs/images/bintray_badge_color.png)](https://bintray.com/frostymarvelous/maven/folio/view?source=watch)
 
 ## Installation
 
