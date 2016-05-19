@@ -3,6 +3,8 @@
 Folio is a Page based navigation framework for Android with a simplified lifecycle and easy transition animations.
 It's intended to fulfil a similar role to fragments while looking more like Activities.
 
+[![Download](https://api.bintray.com/packages/frostymarvelous/maven/folio/images/download.svg) ](https://bintray.com/frostymarvelous/maven/folio/_latestVersion)
+
 ## Users
 
 Apps using Folio in production 
@@ -13,6 +15,8 @@ Apps using Folio in production
 ### Current Version: 1.0.0
 
 Folio follows [Semantic Versioning](http://semver.org/).
+
+[![](https://www.bintray.com/docs/images/bintray_badge_color.png)](https://bintray.com/frostymarvelous/maven/folio``/view?source=watch)
 
 ## Installation
 

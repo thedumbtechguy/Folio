@@ -1,6 +1,7 @@
 # Built application files
 *.apk
 *.ap_
+!artifacts/folio-demo.apk
 
 # Files for the Dalvik VM
 *.dex

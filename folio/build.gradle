@@ -1,4 +1,30 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+ext {
+    bintrayRepo = 'maven'
+    bintrayName = 'folio'
+
+    publishedGroupId = 'com.umaplay.oss'
+    libraryName = 'Folio'
+    artifact = 'folio'
+
+    libraryDescription = 'A Page based navigation framework for Android with a simplified lifecycle and easy transition animations'
+
+    siteUrl = 'https://github.com/frostymarvelous/Folio'
+    gitUrl = 'https://github.com/frostymarvelous/Folio.git'
+
+    libraryVersion = '1.0.0'
+
+    developerId = 'frostymarvelous'
+    developerName = 'Stefan Froelich'
+    developerEmail = 'sfroelich01@gmail.com'
+
+    licenseName = 'MIT'
+    licenseUrl = 'https://github.com/frostymarvelous/Folio/blob/master/LICENSE'
+    allLicenses = ["MIT"]
+}
 
 android {
     compileSdkVersion 23
@@ -7,6 +33,8 @@ android {
     defaultConfig {
         minSdkVersion 11
         targetSdkVersion 23
+        versionCode 1
+        versionName "1.0.0"
     }
     buildTypes {
         release {
@@ -26,3 +54,7 @@ dependencies {
     releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
     testCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta2'
 }
+
+
+apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'
+apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/bintrayv1.gradle'
